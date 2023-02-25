@@ -97,7 +97,7 @@ def convert_2018_2020_data(file_path):
             newLine = line.strip().split("#011")
 
             # check length 
-            if len(newLine) < 26:
+            if len(newLine) < len(columns):
                 badLines.append(i)
                 continue
             # check timestamp
@@ -140,7 +140,7 @@ def convert_2020_2022_data(file_path):
             newLine = line.strip().split("\t")
 
             # check length 
-            if len(newLine) < 26:
+            if len(newLine) < len(columns):
                 badLines.append(i)
                 continue
             # check timestamp
