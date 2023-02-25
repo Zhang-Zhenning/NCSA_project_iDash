@@ -3,9 +3,11 @@ import datetime
 import requests
 import time
 from tqdm import tqdm
+import multiprocessing
+import math
 
 
-# specify columns of database
+# --------------------------------------------specify columns of database----------------------------------------------
 columns = "ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	fuid	file_mime_type	file_desc	proto	note	msg	sub	src	dst	p	n	peer_descr	actions	suppress_for	dropped	remote_location.country_code	remote_location.region	remote_location.city	remote_location.latitude	remote_location.longitude"
 columns = columns.replace(".", "_")
 columns = columns.split("\t")
@@ -14,23 +16,30 @@ print(f"columns: {columns}")
 print(f"columns length: {len(columns)}")
 
 
-# specify types for special columns
-# 0:timestamp   3:port    5:port    15:port    19:sup time   11:msg    12:sub 
+# ------------------------------------------specify types for special columns-------------------------------------------
+# 0:timestamp   3:port    5:port    15:port    19:sup time   11:msg    12:sub
 types = ["VARCHAR(50)" for i in range(len(columns))]
-types[3] = "INT"                                                     # port(int)
-types[5] = "INT"                                                     # port(int)
-types[15] = "INT"                                                    # port(int)
-types[19] = "INT"                                                    # sup time(int)
-types[0] = "TIMESTAMP"                                               # ts(CST timestamp)
-types[11] = "VARCHAR(1000)"                                          # msg(too long)
-types[12] = "VARCHAR(500)"                                           # sub(too long)
+# port(int)
+types[3] = "INT"
+# port(int)
+types[5] = "INT"
+# port(int)
+types[15] = "INT"
+# sup time(int)
+types[19] = "INT"
+# ts(CST timestamp)
+types[0] = "TIMESTAMP"
+# msg(too long)
+types[11] = "VARCHAR(1000)"
+# sub(too long)
+types[12] = "VARCHAR(500)"
 print(f"********************************************************************************************************")
 print(f"types: {types}")
 print(f"types length: {len(types)}")
 
-
+# -------------------------------------------------helper function-------------------------------------------------------
 # year 0 for 2018 - 2020 and year 1 for 2020 - 2022
-def unix_to_cst(convertLine,year=0):
+def unix_to_cst(convertLine, year=0):
     try:
         if year == 0:
            unix_time = float(convertLine[0].split(": ")[-1])
@@ -50,29 +59,33 @@ def unix_to_cst(convertLine,year=0):
 def convert_to_int(convertLine):
     flag = 0
     try:
-        convertLine[3] = str(int(convertLine[3])) if convertLine[3] != "-" else "NULL"
+        convertLine[3] = str(int(convertLine[3])
+                             ) if convertLine[3] != "-" else "NULL"
     except:
         convertLine[3] = "NULL"
         flag = 1
-    
+
     try:
-        convertLine[5] = str(int(convertLine[5])) if convertLine[5] != "-" else "NULL"
+        convertLine[5] = str(int(convertLine[5])
+                             ) if convertLine[5] != "-" else "NULL"
     except:
         convertLine[5] = "NULL"
         flag = 1
-    
+
     try:
-        convertLine[15] = str(int(convertLine[15])) if convertLine[15] != "-" else "NULL"
+        convertLine[15] = str(int(convertLine[15])
+                              ) if convertLine[15] != "-" else "NULL"
     except:
         convertLine[15] = "NULL"
         flag = 1
 
     try:
-        convertLine[19] = str(int(convertLine[19].split(".")[0])) if convertLine[19] != "-" else "NULL"
+        convertLine[19] = str(int(convertLine[19].split(
+            ".")[0])) if convertLine[19] != "-" else "NULL"
     except:
         convertLine[19] = "NULL"
         flag = 1
-    
+
     if flag:
         return 1
     else:
@@ -91,14 +104,14 @@ def convert_2018_2020_data(file_path):
     ret = []
     max_length = [0 for i in range(len(columns))]
 
-    with open(file_path,"r") as f:
+    with open(file_path, "r") as f:
         i = 0
         badLines = []
         for line in f:
             i += 1
             newLine = line.strip().split("#011")
 
-            # check length 
+            # check length
             if len(newLine) < len(columns):
                 badLines.append(i)
                 continue
@@ -113,7 +126,7 @@ def convert_2018_2020_data(file_path):
 
             convert_to_null(newLine)
             ret.append(newLine)
-        
+
         print(f"********************************************************************************************************")
         print(f"for file {file_path}")
         print(f"total line number: {i}")
@@ -134,19 +147,19 @@ def convert_2020_2022_data(file_path):
     ret = []
     max_length = [0 for i in range(len(columns))]
 
-    with open(file_path,"r") as f:
+    with open(file_path, "r") as f:
         i = 0
         badLines = []
         for line in f:
             i += 1
             newLine = line.strip().split("\t")
 
-            # check length 
+            # check length
             if len(newLine) < len(columns):
                 badLines.append(i)
                 continue
             # check timestamp
-            if unix_to_cst(newLine,1):
+            if unix_to_cst(newLine, 1):
                 badLines.append(i)
                 continue
             # check port and sup time
@@ -156,7 +169,7 @@ def convert_2020_2022_data(file_path):
 
             convert_to_null(newLine)
             ret.append(newLine)
-        
+
         print(f"********************************************************************************************************")
         print(f"for file {file_path}")
         print(f"total line number: {i}")
@@ -172,11 +185,13 @@ def convert_2020_2022_data(file_path):
         return ret
 
 
-# create database, return 1 for error and 0 for success
-def create_db(dbName,curURL):
-    typeName = ",".join([columns[i] + " " + types[i] for i in range(len(columns))])
-    rawText =  f"CREATE TABLE {dbName} ({typeName}) ENGINE=File(Native)"
-    r = requests.post(curURL,data=rawText)
+# -------------------------------------------------database operation------------------------------------------------------
+# create database, return 1 for error and 0 for success. If table does exist, it will simply return 0
+def create_db(dbName, curURL):
+    typeName = ",".join([columns[i] + " " + types[i]
+                        for i in range(len(columns))])
+    rawText = f"CREATE TABLE IF NOT EXISTS {dbName} ({typeName}) ENGINE=File(Native)"
+    r = requests.post(curURL, data=rawText)
     if r.status_code != 200:
         print(f"********************************************************************************************************")
         print(f"CREATE ERROR when executing this:\n{rawText}\n")
@@ -186,17 +201,43 @@ def create_db(dbName,curURL):
     return 0
 
 
-# insert data to database, return 1 for error and 0 for success
+# unpack the argument for piece mode
+def insert_to_db_unpack(args):
+    return insert_to_db(*args)
+
+
+# unpack the argument for chunk mode
+def insert_to_db_chunk_unpack(args):
+    return insert_to_db_chunk(*args)
+
+
+# insert data in the chunk to database, return 1 for error and 0 for success
+def insert_to_db_chunk(dbName,curURL,singleLines):
+    for singleLine in singleLines:
+        if insert_to_db(dbName,curURL,singleLine):
+            return 1
+    return 0
+
+
+# insert one line of data to database, return 1 for error and 0 for success
 def insert_to_db(dbName, curURL, singleLine):
     # make sure '' won't confuse mysql in field "sub"
-    singleLine[12] = singleLine[12].replace("'","_")
-    singleLine[11] = singleLine[11].replace("'","_")
+    # time.sleep(0.01)
+    singleLine[12] = singleLine[12].replace("'", "_")
+    singleLine[11] = singleLine[11].replace("'", "_")
     # insert command
     singleLineName = f"cast('{singleLine[0]}' as TIMESTAMP),'{singleLine[1]}','{singleLine[2]}','{singleLine[3]}','{singleLine[4]}','{singleLine[5]}','{singleLine[6]}','{singleLine[7]}','{singleLine[8]}','{singleLine[9]}','{singleLine[10]}','{singleLine[11]}','{singleLine[12]}','{singleLine[13]}','{singleLine[14]}','{singleLine[15]}','{singleLine[16]}','{singleLine[17]}','{singleLine[18]}','{singleLine[19]}','{singleLine[20]}','{singleLine[21]}','{singleLine[22]}','{singleLine[23]}','{singleLine[24]}','{singleLine[25]}'"
-    singleLineName = singleLineName.replace("'NULL'","NULL")
+    singleLineName = singleLineName.replace("'NULL'", "NULL")
     columnName = ",".join(columns)
     rawText = f"INSERT INTO {dbName}({columnName}) VALUES({singleLineName})"
-    r = requests.post(curURL,data=rawText)
+    
+    while True:
+        try:
+           r = requests.post(curURL, data=rawText)
+           break
+        except:
+           continue
+
     if r.status_code != 200:
         print(f"********************************************************************************************************")
         print(f"INSERT ERROR when executing this:\n{rawText}\n")
@@ -206,10 +247,10 @@ def insert_to_db(dbName, curURL, singleLine):
     return 0
 
 
-# drop the database, return 1 for error and 0 for success
-def drop_db(dbName,curURL):
-    rawText = f"DROP TABLE {dbName}"
-    r = requests.post(curURL,data=rawText)
+# drop the database, return 1 for error and 0 for success. If table does not exist, it will simply return 0
+def drop_db(dbName, curURL):
+    rawText = f"DROP TABLE IF EXISTS {dbName}"
+    r = requests.post(curURL, data=rawText)
     if r.status_code != 200:
         print(f"********************************************************************************************************")
         print(f"DROP ERROR when executing this:\n{rawText}\n")
@@ -219,10 +260,10 @@ def drop_db(dbName,curURL):
     return 0
 
 
-# query the database, return 1 for error and 0 for success
-def query_db(curURL,querySentence):
+# query the database, return 1 for error and query result for success
+def query_db(curURL, querySentence):
     rawText = querySentence
-    r = requests.post(curURL,data=rawText)
+    r = requests.post(curURL, data=rawText)
     if r.status_code != 200:
         print(f"********************************************************************************************************")
         print(f"QUERY ERROR when executing this:\n{rawText}\n")
@@ -232,72 +273,90 @@ def query_db(curURL,querySentence):
     print(f"********************************************************************************************************")
     print(f"QUERY SUCCESS when executing this:\n{rawText}\n")
     print(f"QUERY FEEDBACK from server:\n{r.content}")
-    return 0
+    return str(r.content)
 
-    
+
+
 if __name__ == "__main__":
     # variables
-    testNum = 100000  # -1 for all the data
     db = "test_zhenning_local_jubilee"
     url = "http://localhost:18123/"
+    chunkMode = 0
+    queryCommand = None
 
-    if len(sys.argv) >= 2:
-        url = f"http://localhost:{sys.argv[1]}/"
     
     print(f"********************************************************************************************************")
-    print(f"using url {url} to connect to server")
-
-    # convert data into clean format
-    filePath = r"./dataset/bro_notice.log-20180410"
-    a = convert_2018_2020_data(filePath)
-    filePath1 = r"./dataset/notice.00:00:00-01:00:00-20220105.log"
-    b = convert_2020_2022_data(filePath1)
-
-    # drop database
-    # if drop_db(db,url):
-    #     exit(1)
-    # create database
-    if create_db(db,url):
+    print(f"using url {url} to connect to clickhouse server")
+    print(f"target database name is {db}")
+    if chunkMode == 1:
+        print("In chunkMode now")
+    elif chunkMode == 0:
+        print("In pieceMode now")
+    else:
+        # query mode
+        print("In queryMode now")
+        queryResult = query_db(url,queryCommand)
         exit(1)
     
-    startTime = time.time()
-    # insert data from 2018-2020 to database
-    j1 = 0
-    for i in tqdm(range(len(a))):
-        j1 += 1
-        if j1 == testNum:
-            break
-        if insert_to_db(db,url,a[i]):
-            exit(1)
+    
+    # convert data into clean format
+    filePath2018_2020 = r"./dataset/bro_notice.log-20180410"
+    filePath2020_2022 = r"./dataset/notice.00:00:00-01:00:00-20220105.log"
+
+    a = convert_2018_2020_data(filePath2018_2020) if filePath2018_2020 != None else []
+    b = convert_2020_2022_data(filePath2020_2022) if filePath2020_2022 != None else []
+
+    # drop the existing database
+    if drop_db(db, url):
+        exit(1)
+    # create database
+    if create_db(db, url):
+        exit(1)
     
 
-    # insert data from 2020-2022 to database
-    j2 = 0
-    for j in tqdm(range(len(b))):
-        j2 += 1
-        # if j2 == testNum:
-        #     break
-        if insert_to_db(db,url,b[j]):
-            exit(1)
+    totalData = a + b
+    if chunkMode == 1:
+        chunkNum = multiprocessing.cpu_count()
+        chunkLength = math.floor(len(totalData) / chunkNum)
+        chunks = []
+        for i in range(chunkNum):
+            if i < (chunkNum-1):
+                cur_chunk = totalData[i*chunkLength:(i+1)*chunkLength] 
+            else:
+                cur_chunk = totalData[i*chunkLength:]
+
+            chunks.append(cur_chunk)
+        
+        argIteratorChunk = ((db,url,tempChunk) for tempChunk in chunks)
+
+    elif chunkMode == 0:
+        argIteratorPiece = ((db,url,tempPiece) for tempPiece in totalData)
+
     
+    # using multiprocessing to accelerate
+    pool = multiprocessing.Pool()
+    startTime = time.time()
+
+
+    # insert data from 2020-2022 to database
+    if chunkMode:
+        for flag in tqdm(pool.imap_unordered(insert_to_db_chunk_unpack,argIteratorChunk),total=chunkNum):
+            if flag:
+                exit(1)
+    else:
+        for flag in tqdm(pool.imap_unordered(insert_to_db_unpack,argIteratorPiece),total=len(totalData)):
+            if flag:
+                exit(1)
+   
+
     endTime = time.time()
     minutes, seconds = divmod(endTime-startTime, 60)
 
+
     print(f"********************************************************************************************************")
-    print(f"SUCCESSFULLY INSERTED {j1+j2} LINES OF DATA INTO DATABASE {db}")
+    print(f"SUCCESSFULLY INSERTED {len(totalData)} LINES OF DATA INTO DATABASE {db}")
     print("Time taken: %dm %ds" % (minutes, seconds))
 
 
 
-    # # query database
-    # query = f"SELECT * FROM {db} LIMIT 3"
-    # if query_db(url,query):
-    #     exit(1)  
-    
-
-    # # drop database
-    if drop_db(db,url):
-        exit(1)
-
-    
     print(f"********************************************************************************************************")
