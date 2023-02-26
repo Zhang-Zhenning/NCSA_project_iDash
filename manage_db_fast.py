@@ -263,6 +263,11 @@ def drop_db(dbName, curURL):
 # query the database, return 1 for error and query result for success
 def query_db(curURL, querySentence):
     rawText = querySentence
+    if rawText == None:
+        print(f"********************************************************************************************************")
+        print(f"INVALID QUERY")
+        return 1
+
     r = requests.post(curURL, data=rawText)
     if r.status_code != 200:
         print(f"********************************************************************************************************")
@@ -271,26 +276,40 @@ def query_db(curURL, querySentence):
         print(f"********************************************************************************************************")
         return 1
     print(f"********************************************************************************************************")
-    print(f"QUERY SUCCESS when executing this:\n{rawText}\n")
-    print(f"QUERY FEEDBACK from server:\n{r.content}")
-    return str(r.content)
+    print(f"SUCCESS when executing this:\n{rawText}\n")
+    print(f"QUERY FEEDBACK from server:")
+    
+    lst = str(r.content).split("\\n")
+    for itm in lst:
+        print(itm)
+    return lst
 
 
 
 if __name__ == "__main__":
-    # variables
-    db = "test_zhenning_local_jubilee"
-    url = "http://localhost:18123/"
-    chunkMode = 0
-    queryCommand = None
 
-    
+    # -------------------------------------------------user-defined variables------------------------------------------------------
+    # name of table
+    db = "test_zhenning_local_jubilee"
+    # url for clickhouse server, should be local in NCSA server
+    url = "http://localhost:18123/"
+    # 0: pieceMode(recommend for insert) 1: chunkMode(not recommend for insert) 2: queryMode(query the db, needs to modify queryCommand below)
+    Mode = 2
+    # query command, only needed in queryMode (Mode=2)                                          
+    queryCommand = None 
+    # file name list for 2018-2020 data from NCSA    
+    filePaths2018_2020 = [r"./dataset/bro_notice.log-20180410"]
+    # file name list for 2020-2022 data from NCSA
+    filePaths2020_2022 = [r"./dataset/notice.00:00:00-01:00:00-20220105.log"]
+
+
+    # ------------------------------------------------------start working----------------------------------------------------------
     print(f"********************************************************************************************************")
     print(f"using url {url} to connect to clickhouse server")
     print(f"target database name is {db}")
-    if chunkMode == 1:
+    if Mode == 1:
         print("In chunkMode now")
-    elif chunkMode == 0:
+    elif Mode == 0:
         print("In pieceMode now")
     else:
         # query mode
@@ -300,11 +319,17 @@ if __name__ == "__main__":
     
     
     # convert data into clean format
-    filePath2018_2020 = r"./dataset/bro_notice.log-20180410"
-    filePath2020_2022 = r"./dataset/notice.00:00:00-01:00:00-20220105.log"
+    totalData = []
+    print(f"********************************************************************************************************")
+    print("STARTING processing 2018-2020 data")
+    for filePath2018_2020 in tqdm(filePaths2018_2020):
+        totalData += convert_2018_2020_data(filePath2018_2020)
 
-    a = convert_2018_2020_data(filePath2018_2020) if filePath2018_2020 != None else []
-    b = convert_2020_2022_data(filePath2020_2022) if filePath2020_2022 != None else []
+    print(f"********************************************************************************************************")
+    print("STARTING processing 2020-2022 data")
+    for filePath2020_2022 in tqdm(filePaths2020_2022):
+        totalData += convert_2020_2022_data(filePath2020_2022)
+
 
     # drop the existing database
     if drop_db(db, url):
@@ -314,8 +339,7 @@ if __name__ == "__main__":
         exit(1)
     
 
-    totalData = a + b
-    if chunkMode == 1:
+    if Mode == 1:
         chunkNum = multiprocessing.cpu_count()
         chunkLength = math.floor(len(totalData) / chunkNum)
         chunks = []
@@ -326,11 +350,16 @@ if __name__ == "__main__":
                 cur_chunk = totalData[i*chunkLength:]
 
             chunks.append(cur_chunk)
-        
         argIteratorChunk = ((db,url,tempChunk) for tempChunk in chunks)
-
-    elif chunkMode == 0:
+        
+    elif Mode == 0:
         argIteratorPiece = ((db,url,tempPiece) for tempPiece in totalData)
+
+    else:
+        print(f"********************************************************************************************************")
+        print("Wrong Insert Mode! Mode = 0 for pieceMode, 1 for chunkMode")
+        print(f"********************************************************************************************************")
+        exit(1)
 
     
     # using multiprocessing to accelerate
@@ -339,7 +368,7 @@ if __name__ == "__main__":
 
 
     # insert data from 2020-2022 to database
-    if chunkMode:
+    if Mode == 1:
         for flag in tqdm(pool.imap_unordered(insert_to_db_chunk_unpack,argIteratorChunk),total=chunkNum):
             if flag:
                 exit(1)
