@@ -15,6 +15,8 @@ bash install_docker.sh 18123 19000
 
 Because for those two ports usually we don't need root privilege.
 
+PORT2 is for clickhouse.client service, which we won't utilize in this implementation. Please just ignore PORT2 and use PORT1 for HTTP request.
+
 After running **install_docker.sh**, the basic information of the clickhouse server (e.g. url and container id) will be printed for your reference.      
 
   
