@@ -83,6 +83,8 @@ python manage_db_fast.py
 ~~~
 
 >*Remember, if you use insertion mode as we mentioned to insert some data into a table, this table will firstly be dropped (if exists) then be created. That is, if you just want to update the table, please use the insertion function **insert_to_db(dbName, curURL, singleLine)** in **manage_db_fast.py** directly*.
+
+
 >Also, in all the column names of database, we replace "." with "_" in order to avoid unexpected problems. Please make sure you also obey this format when doing the query. 
 
 
