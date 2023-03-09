@@ -48,9 +48,20 @@ def unix_to_cst(convertLine, year=0):
     except:
         return 1
 
+    # Convert to UTC datetime object
     utc_datetime = datetime.datetime.utcfromtimestamp(unix_time)
-    cst_datetime = utc_datetime - datetime.timedelta(hours=6)
-    cst_str = cst_datetime.strftime('%Y-%m-%d %H:%M:%S')
+    temp_cdt_datetime = utc_datetime - datetime.timedelta(hours=5)
+
+    start_dst = datetime.datetime(temp_cdt_datetime.year, 3, 8, 3, 0, 0) + datetime.timedelta(days=(6-datetime.datetime(temp_cdt_datetime.year, 3, 8).weekday()))
+    end_dst = datetime.datetime(temp_cdt_datetime.year, 11, 1, 2, 0, 0) + datetime.timedelta(days=(6-datetime.datetime(temp_cdt_datetime.year, 11, 1).weekday()))
+
+    if temp_cdt_datetime >= end_dst:
+        temp_cdt_datetime = utc_datetime - datetime.timedelta(hours=6)
+    elif temp_cdt_datetime < start_dst:
+        temp_cdt_datetime = utc_datetime - datetime.timedelta(hours=6)
+
+    temp_cdt_datetime = temp_cdt_datetime.strftime('%Y-%m-%d %H:%M:%S')
+    cst_str = temp_cdt_datetime
     convertLine[0] = cst_str
     return 0
 
@@ -294,7 +305,7 @@ if __name__ == "__main__":
     # url for clickhouse server, should be local in NCSA server
     url = "http://localhost:18123/"
     # 0: pieceMode(recommend for insert) 1: chunkMode(not recommend for insert) 2: queryMode(query the db, needs to modify queryCommand below)
-    Mode = 2
+    Mode = 0
     # query command, only needed in queryMode (Mode=2)                                          
     queryCommand = None 
     # file name list for 2018-2020 data from NCSA    
