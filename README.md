@@ -16,6 +16,7 @@ sudo clickhouse restart
 
 We have set the database engine to file so that the data will remain in disc even the server is stopped.
 
+<br /><br />
 
 # Install Clickhouse with Docker
 We use docker to build local database engine. The official docker website is [offcical link in docker hub](https://hub.docker.com/r/clickhouse/clickhouse-server/). The official website for Clickhouse is [Clickhouse offical website](https://clickhouse.com/).
