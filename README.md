@@ -1,4 +1,23 @@
-# Install Clickhouse
+# Install Clickhouse directly from binary
+We provide a bash script **install_direct.sh** for your convenience. This script will help you download and install the clickhouse binary. After running the script successfully, please use the following command to run the clickhouse-server:
+
+~~~
+sudo clickhouse start
+~~~
+
+Then you can use **manage_db_fast.py** or **manage_db.py** to manage the database via HTTP. The server will defaultly run on port **8123** which is also the default URL in **manage_db_fast.py**.
+
+Please use the following commands to stop the server and restart tge server:
+
+~~~
+sudo clickhouse stop
+sudo clickhouse restart
+~~~
+
+We have set the database engine to file so that the data will remain in disc even the server is stopped.
+
+
+# Install Clickhouse with Docker
 We use docker to build local database engine. The official docker website is [offcical link in docker hub](https://hub.docker.com/r/clickhouse/clickhouse-server/). The official website for Clickhouse is [Clickhouse offical website](https://clickhouse.com/).
 
 We provide a bash script **install_docker.sh** for your convenience. 
