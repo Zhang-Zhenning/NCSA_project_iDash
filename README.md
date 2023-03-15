@@ -72,7 +72,7 @@ We have provided 6 user-defined variables
 
 ~~~
     db = "test_local_table1"
-    url = "http://localhost:18123/"
+    url = "http://localhost:8123/"
     Mode = 2
     queryCommand = None 
     filePaths2018_2020 = [r"./dataset/bro_notice.log-20180410"]
@@ -83,7 +83,7 @@ We have provided 6 user-defined variables
 
 1. *db* is the table name you want to manipulate (e.g. create, drop, insert or query) in **string** format
 
-2. *url* is the address of clickhouse database server in **string** format, which should be local in most cases
+2. *url* is the address of clickhouse database server in **string** format, which should be local in most cases. Notice that if we install via docker than the default should be 18123 and should be 8123 if we install directly. That's somewhat convention provided in clickhouse official website, feel free to change that (if you decide to change, for docker you just need to modify the port number in **install_docker.sh**, while for direct installation you may need to look up in the official document to modify the config file. We highly recommend you to obey the default value.)
 
 3. *Mode* has three possible **integer** values. 
     1. 0 is the piece mode for insertion. This is the recommended insertion mode. pieceMode will create a process for each line of data. But this may cause the port to suffer from spam which may increase time cost a bit as the program needs to spin for a while to make one POST call reach the server.
