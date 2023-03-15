@@ -303,7 +303,7 @@ if __name__ == "__main__":
     # name of table
     db = "test_zhenning_local_jubilee"
     # url for clickhouse server, should be local in NCSA server
-    url = "http://localhost:18123/"
+    url = "http://localhost:8123/"
     # 0: pieceMode(recommend for insert) 1: chunkMode(not recommend for insert) 2: queryMode(query the db, needs to modify queryCommand below)
     Mode = 0
     # query command, only needed in queryMode (Mode=2)                                          
