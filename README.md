@@ -14,7 +14,7 @@ sudo clickhouse stop
 sudo clickhouse restart
 ~~~
 
-We have set the database engine to file so that the data will remain in disc even the server is stopped.
+We have set the database engine to file so that the data will remain in disk even the server is stopped.
 
 <br /><br />
 
