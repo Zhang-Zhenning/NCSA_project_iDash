@@ -7,7 +7,7 @@ sudo clickhouse start
 
 Then you can use **manage_db_fast.py** or **manage_db.py** to manage the database via HTTP. The server will defaultly run on port **8123** which is also the default URL in **manage_db_fast.py**.
 
-Please use the following commands to stop the server and restart tge server:
+Please use the following commands to stop the server and restart the server:
 
 ~~~
 sudo clickhouse stop
